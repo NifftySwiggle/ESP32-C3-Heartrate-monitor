@@ -38,7 +38,7 @@
 
 This project turns an ESP32-C3 development board into a small, self-contained optical heart-rate and SpO2 monitor. A MAX30102 sensor provides red and infrared photoplethysmography data. The firmware processes the signal, renders a scrolling waveform on a 72x40 SSD1306 OLED, and gives immediate visual and audio feedback for detected beats.
 
-The interface is designed for one onboard BOOT button. Short presses move between screens, while long presses perform the action associated with the current screen.
+The interface uses the ESP32-C3 BOOT button when the board routes that button to `GPIO 9`. On boards without a BOOT button on `GPIO 9`, an optional external momentary button can be connected between `GPIO 9` and `GND`. Short presses move between screens, while long presses perform the action associated with the current screen.
 
 ## ⚡ Key Features
 
@@ -60,7 +60,7 @@ The interface is designed for one onboard BOOT button. Short presses move betwee
 
 - ESP32-C3 development board
 - MAX30102 pulse-oximeter sensor module
-- 72x40 SSD1306 I2C OLED, address `0x3C`
+- Onboard 72x40 SSD1306 I2C OLED, address `0x3C`
 - Passive piezo or active buzzer
 - LED and resistor
 - 10 uF capacitor
@@ -68,36 +68,46 @@ The interface is designed for one onboard BOOT button. Short presses move betwee
 
 ### ESP32-C3 Pinout
 
-Connect the modules as shown below. The MAX30102 and OLED share the ESP32-C3 I2C bus.
+Connect the MAX30102 to the ESP32-C3 board as shown below. The MAX30102 shares the ESP32-C3 I2C bus with the board's onboard 72x40 OLED.
 
 | Component | ESP32-C3 pin | Notes |
 | :--- | :---: | :--- |
-| OLED SDA | `GPIO 5` | I2C data; shared with MAX30102 SDA |
-| OLED SCL | `GPIO 6` | I2C clock; shared with MAX30102 SCL |
+| Onboard OLED SDA | `GPIO 5` | I2C data; shared with MAX30102 SDA |
+| Onboard OLED SCL | `GPIO 6` | I2C clock; shared with MAX30102 SCL |
 | MAX30102 INT | `GPIO 10` | Interrupt input |
 | Beat LED | `GPIO 2` | LED anode through a 330 ohm resistor; cathode to GND |
 | Buzzer | `GPIO 3` | Positive through a 150-220 ohm resistor; negative to GND |
-| BOOT button | `GPIO 9` | Uses the internal pull-up; button connects to GND |
+| BOOT button or optional external button | `GPIO 9` | Uses the internal pull-up; button connects to GND |
 | Sensor/display power | `3V3` | MAX30102 VIN, OLED VCC, capacitor positive terminal |
 | Ground | `GND` | MAX30102 GND/PGND, OLED GND, capacitor negative terminal |
 
+### Wiring Schematic
+
+<div align="center">
+
+![ESP32-C3 heart-rate monitor wiring schematic](assets/espc3heartrate.png)
+
+*ESP32-C3, MAX30102, onboard OLED, LED, buzzer, and capacitor wiring schematic.*
+
+</div>
+
 ### Wiring Checklist
 
-1. Connect `3V3` and `GND` to both the MAX30102 and OLED.
-2. Connect MAX30102 `SDA` and OLED `SDA` to `GPIO 5`.
-3. Connect MAX30102 `SCL` and OLED `SCL` to `GPIO 6`.
+1. Connect the MAX30102 `VIN` to `3V3` and `GND` to `GND`.
+2. Connect MAX30102 `SDA` to `GPIO 5`, the I2C line used by the onboard OLED.
+3. Connect MAX30102 `SCL` to `GPIO 6`, the I2C line used by the onboard OLED.
 4. Connect MAX30102 `INT` to `GPIO 10`.
 5. Connect the LED through its 330 ohm resistor to `GPIO 2`.
 6. Connect the buzzer through its 150-220 ohm resistor to `GPIO 3`.
-7. Connect the BOOT button between `GPIO 9` and `GND`.
+7. If the onboard BOOT button is not connected to `GPIO 9`, connect an optional momentary button between `GPIO 9` and `GND`.
 8. Place the 10 uF capacitor between `3V3` and `GND`, observing polarity.
 
 > [!NOTE]
-> Use 3.3 V-compatible breakout boards. Pin labels and voltage requirements vary between MAX30102 and OLED modules, so verify the documentation for your specific hardware before powering it.
+> Use a 3.3 V-compatible MAX30102 breakout board. The OLED is integrated into the ESP32-C3 board, so no external OLED wiring is required.
 
 ## 🎮 Control Reference
 
-The onboard BOOT button distinguishes short and long presses:
+The ESP32-C3 BOOT button, or the optional GPIO 9 button, distinguishes short and long presses:
 
 | Input | Screen | Action |
 | :--- | :--- | :--- |
