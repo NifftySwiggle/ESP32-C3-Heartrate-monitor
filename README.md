@@ -21,7 +21,7 @@
 
 - [Overview](#-overview)
 - [Key Features](#-key-features)
-- [Hardware and Wiring](#-hardware-and-wiring)
+- [Hardware and Wiring Guide](#-hardware-and-wiring-guide)
 - [Control Reference](#-control-reference)
 - [Display Modes](#-display-modes)
 - [Measurement Behavior](#-measurement-behavior)
@@ -54,7 +54,7 @@ The interface is designed for one onboard BOOT button. Short presses move betwee
 - **🔔 Beat feedback** through an LED and either a passive piezo or active buzzer.
 - **⚙️ Persistent buzzer setting** saved in ESP32-C3 flash using `Preferences`.
 
-## 🛠️ Hardware and Wiring
+## 🛠️ Hardware and Wiring Guide
 
 ### Required Hardware
 
@@ -68,6 +68,8 @@ The interface is designed for one onboard BOOT button. Short presses move betwee
 
 ### ESP32-C3 Pinout
 
+Connect the modules as shown below. The MAX30102 and OLED share the ESP32-C3 I2C bus.
+
 | Component | ESP32-C3 pin | Notes |
 | :--- | :---: | :--- |
 | OLED SDA | `GPIO 5` | I2C data; shared with MAX30102 SDA |
@@ -78,6 +80,17 @@ The interface is designed for one onboard BOOT button. Short presses move betwee
 | BOOT button | `GPIO 9` | Uses the internal pull-up; button connects to GND |
 | Sensor/display power | `3V3` | MAX30102 VIN, OLED VCC, capacitor positive terminal |
 | Ground | `GND` | MAX30102 GND/PGND, OLED GND, capacitor negative terminal |
+
+### Wiring Checklist
+
+1. Connect `3V3` and `GND` to both the MAX30102 and OLED.
+2. Connect MAX30102 `SDA` and OLED `SDA` to `GPIO 5`.
+3. Connect MAX30102 `SCL` and OLED `SCL` to `GPIO 6`.
+4. Connect MAX30102 `INT` to `GPIO 10`.
+5. Connect the LED through its 330 ohm resistor to `GPIO 2`.
+6. Connect the buzzer through its 150-220 ohm resistor to `GPIO 3`.
+7. Connect the BOOT button between `GPIO 9` and `GND`.
+8. Place the 10 uF capacitor between `3V3` and `GND`, observing polarity.
 
 > [!NOTE]
 > Use 3.3 V-compatible breakout boards. Pin labels and voltage requirements vary between MAX30102 and OLED modules, so verify the documentation for your specific hardware before powering it.
@@ -173,8 +186,7 @@ This repository is intentionally small:
 ```text
 Heartrate-monitor/
 ├── Heartrate-monitor.ino   # Sensor processing, UI, button handling, and logging
-├── README.md               # Project documentation
-└── README.txt              # Original quick-reference wiring notes
+├── README.md               
 ```
 
 ## ⚠️ Limitations and Safety
