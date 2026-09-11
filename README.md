@@ -143,6 +143,9 @@ The Settings screen shows the current buzzer mode and perfusion index. Hold the 
 | Sensor interface | I2C, fast mode |
 | Sensor sampling | 100 Hz, red + infrared LEDs |
 | Beat range accepted | 35-220 BPM for instantaneous beat samples |
+| BPM smoothing | Rolling average of up to 2 valid beats; startup values use only collected beats |
+| Motion/noise rejection | Double triggers and large isolated BPM jumps are ignored |
+| Signal timeout | BPM and SpO2 clear after 3 seconds without a valid beat |
 | Displayed BPM validity | At least 40 BPM |
 | Displayed SpO2 validity | At least 85% |
 | Lead-off threshold | Infrared reading below `45000` |

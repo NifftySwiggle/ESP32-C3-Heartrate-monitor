@@ -52,8 +52,12 @@ void IRAM_ATTR sensorISR() {
 const byte RATE_SIZE = 4;
 byte rates[RATE_SIZE];
 byte rateSpot = 0;
-long lastBeat = 0;
+byte validRateCount = 0;
+uint32_t lastBeat = 0;
+uint32_t lastAcceptedBeat = 0;
 int beatAvg = 0;
+const uint32_t MIN_BEAT_INTERVAL_MS = 270; // Reject double triggers above 222 BPM.
+const uint32_t HEART_RATE_TIMEOUT_MS = 3000;
 
 // High-Accuracy Optical Beat Cycle Trackers
 long cycleIrMax = 0, cycleIrMin = 999999;
@@ -168,6 +172,33 @@ void storeRecord(uint8_t bpmVal, uint8_t spo2Val) {
 
   if (recordCount < MAX_RECORDS) {
     recordCount++;
+  }
+}
+
+void resetHeartRateTracking() {
+  memset(rates, 0, sizeof(rates));
+  rateSpot = 0;
+  validRateCount = 0;
+  lastBeat = 0;
+  lastAcceptedBeat = 0;
+  beatAvg = 0;
+}
+
+void triggerBeatAlert(uint32_t now) {
+  beatOccurred = true;
+  beatBlinkTimer = now;
+  beatOutputTimer = now;
+  beatOutputActive = true;
+  digitalWrite(BEAT_LED_PIN, HIGH);
+
+  if (buzzerSetting == BUZZ_PASSIVE_PIEZO) {
+    int pitch = 880;
+    if (spo2 >= 88.0 && spo2 <= 100.0) {
+      pitch = map((int)spo2, 88, 100, 520, 880);
+    }
+    tone(BUZZER_PIN, pitch);
+  } else if (buzzerSetting == BUZZ_ACTIVE) {
+    digitalWrite(BUZZER_PIN, HIGH);
   }
 }
 
@@ -341,6 +372,10 @@ void setup() {
   // Load Saved Preferences from Flash
   prefs.begin("pulseox", false);
   buzzerSetting = (BuzzerType)prefs.getUChar("buz", BUZZ_PASSIVE_PIEZO);
+  if (buzzerSetting > BUZZ_OFF) {
+    buzzerSetting = BUZZ_PASSIVE_PIEZO;
+    prefs.putUChar("buz", (uint8_t)buzzerSetting);
+  }
 
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDR)) {
     while (1);
@@ -401,7 +436,7 @@ void loop() {
 
       // Lead-Off Threshold
       if (irValue < 45000) {
-        beatAvg = 0;
+        resetHeartRateTracking();
         spo2 = 0;
         liveIrDC = 0;
         liveRedDC = 0;
@@ -428,20 +463,39 @@ void loop() {
       }
 
       // Heartbeat Detection Cycle Closure
+      bool acceptedBeat = false;
       if (checkForBeat(irValue)) {
-        long delta = millis() - lastBeat;
-        lastBeat = millis();
+        uint32_t now = millis();
+        uint32_t delta = now - lastBeat;
 
-        float bpmInstant = 60.0 / (delta / 1000.0);
-        if (bpmInstant >= 35 && bpmInstant <= 220) {
-          rates[rateSpot++] = (byte)bpmInstant;
-          rateSpot %= RATE_SIZE;
+        // The detector can occasionally fire twice on a sharp/noisy edge.
+        if (lastBeat == 0) {
+          lastBeat = now;
+        } else if (delta >= MIN_BEAT_INTERVAL_MS) {
+          float bpmInstant = 60000.0 / delta;
 
-          beatAvg = 0;
-          for (byte x = 0; x < RATE_SIZE; x++) beatAvg += rates[x];
-          beatAvg /= RATE_SIZE;
+          // Ignore intervals outside the usable heart-rate range.
+          bool plausible = bpmInstant >= 35 && bpmInstant <= 220;
+
+          if (plausible) {
+            rates[rateSpot++] = (byte)bpmInstant;
+            rateSpot %= RATE_SIZE;
+            if (validRateCount < RATE_SIZE) validRateCount++;
+
+            beatAvg = 0;
+            for (byte x = 0; x < validRateCount; x++) beatAvg += rates[x];
+            beatAvg /= validRateCount;
+            acceptedBeat = true;
+            lastAcceptedBeat = now;
+          }
+
+          // Keep timing anchored to the detector even when a noisy interval
+          // is rejected, so one false trigger cannot suppress later beats.
+          lastBeat = now;
         }
+      }
 
+      if (acceptedBeat) {
         // Calculate True AC/DC Ratio across the finished cardiac cycle
         float irAC = (float)(cycleIrMax - cycleIrMin);
         float redAC = (float)(cycleRedMax - cycleRedMin);
@@ -466,23 +520,8 @@ void loop() {
         cycleIrMax = irValue; cycleIrMin = irValue;
         cycleRedMax = redValue; cycleRedMin = redValue;
 
-        // Trigger Audio-Visual Indicators
-        beatOccurred = true;
-        beatBlinkTimer = millis();
-        beatOutputTimer = millis();
-        beatOutputActive = true;
-
-        digitalWrite(BEAT_LED_PIN, HIGH);
-
-        if (buzzerSetting == BUZZ_PASSIVE_PIEZO) {
-          int pitch = 880;
-          if (spo2 >= 88.0 && spo2 <= 100.0) {
-            pitch = map((int)spo2, 88, 100, 520, 880);
-          }
-          tone(BUZZER_PIN, pitch);
-        } else if (buzzerSetting == BUZZ_ACTIVE) {
-          digitalWrite(BUZZER_PIN, HIGH);
-        }
+        // Every accepted pulse gets an alert. SpO2 only changes passive-piezo pitch.
+        triggerBeatAlert(millis());
       }
 
       // Live Waveform Plotting
@@ -506,6 +545,12 @@ void loop() {
       }
       waveBuffer[SCREEN_WIDTH - 1] = yPlot;
     }
+  }
+
+  if (lastAcceptedBeat > 0 && millis() - lastAcceptedBeat >= HEART_RATE_TIMEOUT_MS) {
+    resetHeartRateTracking();
+    spo2 = 0;
+    perfusionIndex = 0;
   }
 
   // Non-blocking Buzzer and LED Shutoff
