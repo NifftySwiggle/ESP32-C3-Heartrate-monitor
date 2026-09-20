@@ -75,12 +75,14 @@ Connect the MAX30102 to the ESP32-C3 board as shown below. The MAX30102 shares t
 | Onboard OLED SDA | `GPIO 5` | I2C data; shared with MAX30102 SDA |
 | Onboard OLED SCL | `GPIO 6` | I2C clock; shared with MAX30102 SCL |
 | MAX30102 INT | `GPIO 10` | Interrupt input |
-| Beat LED | `GPIO 2` | LED anode through a 330 ohm resistor; cathode to GND |
-| Buzzer | `GPIO 3` | Positive through a 150-220 ohm resistor; negative to GND |
 | BOOT button or optional external button | `GPIO 9` | Uses the internal pull-up; button connects to GND |
 | Sensor/display power | `3V3` | MAX30102 VIN, OLED VCC, capacitor positive terminal |
 | Ground | `GND` | MAX30102 GND/PGND, OLED GND, capacitor negative terminal |
+Adding 100uF and 10nFcaps to ESP 3.3V and MAX VCC can improve the device.
 
+LED and Buzzer optional works better without
+| Beat LED | `GPIO 2` | LED anode through a 330 ohm resistor; cathode to GND |
+| Buzzer | `GPIO 3` | Positive through a 150-220 ohm resistor; negative to GND |
 ### Wiring Schematic
 
 <div align="center">
