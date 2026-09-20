@@ -10,6 +10,8 @@
 
 **A compact ESP32-C3 pulse and blood-oxygen monitor with live waveform display, local reading history, beat indicators, and configurable buzzer feedback.**
 
+**Enclosure coming soon, 3d printable pulse clip.**
+
 </div>
 
 > [!WARNING]
